@@ -134,8 +134,14 @@ const kanbanSlice = createSlice({
 
       saveState(state);
     },
+    clearIssues: (state) => {
+      state.columns.todo.issues = [];
+      state.columns.inProgress.issues = [];
+      state.columns.done.issues = [];
+      saveState(state);
+    },
   },
 });
 
-export const { setLoading, setError, setRepoInfo, setIssues, moveIssue } = kanbanSlice.actions;
+export const { setLoading, setError, setRepoInfo, setIssues, moveIssue, clearIssues } = kanbanSlice.actions;
 export default kanbanSlice.reducer;

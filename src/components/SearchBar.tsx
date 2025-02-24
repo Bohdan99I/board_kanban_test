@@ -13,6 +13,7 @@ import {
   setError,
   setRepoInfo,
   setIssues,
+  clearIssues, 
 } from "../store/kanbanSlice";
 import { Search } from "lucide-react";
 
@@ -37,6 +38,7 @@ const SearchBar: React.FC = () => {
     try {
       dispatch(setLoading(true));
       dispatch(setError(null));
+      dispatch(clearIssues()); 
 
       const { owner, repo } = extractRepoInfo(repoUrl);
 
