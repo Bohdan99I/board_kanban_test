@@ -1,8 +1,21 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { KanbanState, GitHubIssue, RepoInfo } from '../types';
 
+const STORAGE_KEY = 'kanbanState';
+const REPOS_KEY = 'kanbanRepos';
+
+interface StoredRepoState {
+  columns: KanbanState['columns'];
+  repoInfo: RepoInfo;
+}
+
+const getStoredRepos = (): Record<string, StoredRepoState> => {
+  const stored = localStorage.getItem(REPOS_KEY);
+  return stored ? JSON.parse(stored) : {};
+};
+
 const getInitialState = (): KanbanState => {
-  const savedState = localStorage.getItem('kanbanState');
+  const savedState = localStorage.getItem(STORAGE_KEY);
   if (savedState) {
     return JSON.parse(savedState);
   }
@@ -18,6 +31,18 @@ const getInitialState = (): KanbanState => {
   };
 };
 
+const saveState = (state: KanbanState) => {
+  if (state.repoInfo) {
+    const repos = getStoredRepos();
+    repos[state.repoInfo.html_url] = {
+      columns: state.columns,
+      repoInfo: state.repoInfo,
+    };
+    localStorage.setItem(REPOS_KEY, JSON.stringify(repos));
+  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+};
+
 const kanbanSlice = createSlice({
   name: 'kanban',
   initialState: getInitialState(),
@@ -29,24 +54,68 @@ const kanbanSlice = createSlice({
       state.error = action.payload;
     },
     setRepoInfo: (state, action: PayloadAction<RepoInfo>) => {
-      state.repoInfo = action.payload;
+      const repoUrl = action.payload.html_url;
+      const storedRepos = getStoredRepos();
+
+      if (storedRepos[repoUrl]) {
+        state.columns = storedRepos[repoUrl].columns;
+        state.repoInfo = storedRepos[repoUrl].repoInfo;
+      } else {
+        state.repoInfo = action.payload;
+      }
+
+      saveState(state);
     },
     setIssues: (state, action: PayloadAction<GitHubIssue[]>) => {
       const issues = action.payload;
-      
-      state.columns.todo.issues = issues.filter(
-        issue => issue.state === 'open' && !issue.assignee
-      );
-      
-      state.columns.inProgress.issues = issues.filter(
-        issue => issue.state === 'open' && issue.assignee
-      );
-      
-      state.columns.done.issues = issues.filter(
-        issue => issue.state === 'closed'
-      );
-      
-      localStorage.setItem('kanbanState', JSON.stringify(state));
+      const storedRepos = getStoredRepos();
+      const currentRepoUrl = state.repoInfo?.html_url;
+
+      if (currentRepoUrl && storedRepos[currentRepoUrl]) {
+        const existingIssues = new Set(
+          Object.values(state.columns)
+            .flatMap(column => column.issues)
+            .map(issue => issue.id)
+        );
+
+        const newTodoIssues = issues
+          .filter(issue =>
+            !existingIssues.has(issue.id) &&
+            issue.state === 'open' &&
+            !issue.assignee
+          );
+
+        const newInProgressIssues = issues
+          .filter(issue =>
+            !existingIssues.has(issue.id) &&
+            issue.state === 'open' &&
+            issue.assignee
+          );
+
+        const newDoneIssues = issues
+          .filter(issue =>
+            !existingIssues.has(issue.id) &&
+            issue.state === 'closed'
+          );
+
+        state.columns.todo.issues.push(...newTodoIssues);
+        state.columns.inProgress.issues.push(...newInProgressIssues);
+        state.columns.done.issues.push(...newDoneIssues);
+      } else {
+        state.columns.todo.issues = issues.filter(
+          issue => issue.state === 'open' && !issue.assignee
+        );
+
+        state.columns.inProgress.issues = issues.filter(
+          issue => issue.state === 'open' && issue.assignee
+        );
+
+        state.columns.done.issues = issues.filter(
+          issue => issue.state === 'closed'
+        );
+      }
+
+      saveState(state);
     },
     moveIssue: (state, action: PayloadAction<{
       issueId: number;
@@ -56,14 +125,14 @@ const kanbanSlice = createSlice({
       destinationIndex: number;
     }>) => {
       const { issueId, sourceColumn, destinationColumn, sourceIndex, destinationIndex } = action.payload;
-      
+
       const issue = state.columns[sourceColumn].issues.find(i => i.id === issueId);
       if (!issue) return;
-      
+
       state.columns[sourceColumn].issues.splice(sourceIndex, 1);
       state.columns[destinationColumn].issues.splice(destinationIndex, 0, issue);
-      
-      localStorage.setItem('kanbanState', JSON.stringify(state));
+
+      saveState(state);
     },
   },
 });
