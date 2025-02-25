@@ -1,4 +1,3 @@
-import React from 'react';
 import { ChakraProvider, Container, VStack } from '@chakra-ui/react';
 import { Provider } from 'react-redux';
 import { store } from './store';
