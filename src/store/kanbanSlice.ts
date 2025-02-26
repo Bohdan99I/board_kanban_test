@@ -1,7 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { KanbanState, GitHubIssue, RepoInfo } from '../types';
 
-const STORAGE_KEY = 'kanbanState';
 const REPOS_KEY = 'kanbanRepos';
 
 interface StoredRepoState {
@@ -10,24 +9,11 @@ interface StoredRepoState {
 }
 
 const getStoredRepos = (): Record<string, StoredRepoState> => {
-  try {
-    const stored = localStorage.getItem(REPOS_KEY);
-    return stored ? JSON.parse(stored) : {};
-  } catch (error) {
-    console.error("Error parsing stored repositories:", error);
-    return {};
-  }
+  const stored = localStorage.getItem(REPOS_KEY);
+  return stored ? JSON.parse(stored) : {};
 };
 
 const getInitialState = (): KanbanState => {
-  try {
-    const savedState = localStorage.getItem(STORAGE_KEY);
-    if (savedState) {
-      return JSON.parse(savedState);
-    }
-  } catch (error) {
-    console.error("Error parsing initial state:", error);
-  }
   return {
     columns: {
       todo: { id: 'todo', title: 'To Do', issues: [] },
@@ -41,17 +27,13 @@ const getInitialState = (): KanbanState => {
 };
 
 const saveState = (state: KanbanState) => {
-  if (!state.repoInfo) return;
-  try {
+  if (state.repoInfo) {
     const repos = getStoredRepos();
     repos[state.repoInfo.html_url] = {
       columns: state.columns,
       repoInfo: state.repoInfo,
     };
     localStorage.setItem(REPOS_KEY, JSON.stringify(repos));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch (error) {
-    console.error("Error saving state:", error);
   }
 };
 
@@ -74,6 +56,11 @@ const kanbanSlice = createSlice({
         state.repoInfo = storedRepos[repoUrl].repoInfo;
       } else {
         state.repoInfo = action.payload;
+        state.columns = {
+          todo: { id: 'todo', title: 'To Do', issues: [] },
+          inProgress: { id: 'inProgress', title: 'In Progress', issues: [] },
+          done: { id: 'done', title: 'Done', issues: [] },
+        };
       }
 
       saveState(state);
@@ -136,18 +123,35 @@ const kanbanSlice = createSlice({
       sourceIndex: number;
       destinationIndex: number;
     }>) => {
-      const { issueId, sourceColumn, destinationColumn, sourceIndex, destinationIndex } = action.payload;
+      const { sourceColumn, destinationColumn, sourceIndex, destinationIndex } = action.payload;
 
-      const issue = state.columns[sourceColumn].issues.find(i => i.id === issueId);
+      const issue = state.columns[sourceColumn].issues[sourceIndex];
       if (!issue) return;
 
       state.columns[sourceColumn].issues.splice(sourceIndex, 1);
-      state.columns[destinationColumn].issues.splice(destinationIndex, 0, issue);
+
+      const updatedIssue = { ...issue };
+
+      if (destinationColumn === 'done') {
+        updatedIssue.state = 'closed';
+      } else {
+        updatedIssue.state = 'open';
+        if (destinationColumn === 'inProgress') {//
+        } else if (destinationColumn === 'todo') {
+          updatedIssue.assignee = null;
+        }
+      }
+
+      state.columns[destinationColumn].issues.splice(destinationIndex, 0, updatedIssue);
 
       saveState(state);
     },
     clearIssues: (state) => {
-      Object.values(state.columns).forEach(column => column.issues = []);
+      state.columns = {
+        todo: { id: 'todo', title: 'To Do', issues: [] },
+        inProgress: { id: 'inProgress', title: 'In Progress', issues: [] },
+        done: { id: 'done', title: 'Done', issues: [] },
+      };
       saveState(state);
     },
   },

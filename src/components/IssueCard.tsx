@@ -15,12 +15,15 @@ const IssueCard: React.FC<IssueCardProps> = ({ issue }) => {
       boxShadow="sm"
       borderWidth="1px"
       _hover={{ boxShadow: "md" }}
+      userSelect="none"
+      width="100%"
     >
       <Link
         href={issue.html_url}
         isExternal
         color="blue.600"
         fontWeight="medium"
+        onClick={(e) => e.stopPropagation()}
       >
         #{issue.number} {issue.title}
       </Link>

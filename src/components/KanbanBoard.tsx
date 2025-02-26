@@ -13,20 +13,22 @@ import IssueCard from "./IssueCard";
 
 const KanbanBoard: React.FC = () => {
   const dispatch = useDispatch();
-  const columns = useSelector((state: RootState) => state.kanban.columns);
+  const { columns } = useSelector((state: RootState) => state.kanban);
 
-  const handleDragEnd = ({ source, destination, draggableId }: DropResult) => {
+  const handleDragEnd = (result: DropResult) => {
+    const { source, destination, draggableId } = result;
+
+    if (!destination) return;
     if (
-      !destination ||
-      (source.droppableId === destination.droppableId &&
-        source.index === destination.index)
+      source.droppableId === destination.droppableId &&
+      source.index === destination.index
     ) {
       return;
     }
 
     dispatch(
       moveIssue({
-        issueId: Number(draggableId),
+        issueId: parseInt(draggableId),
         sourceColumn: source.droppableId,
         destinationColumn: destination.droppableId,
         sourceIndex: source.index,
@@ -37,9 +39,9 @@ const KanbanBoard: React.FC = () => {
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <SimpleGrid minChildWidth="300px" spacing={6}>
+      <SimpleGrid columns={3} spacing={6}>
         {Object.entries(columns).map(([columnId, column]) => (
-          <Box key={columnId} p={2}>
+          <Box key={columnId}>
             <Box bg="gray.100" p={4} borderRadius="lg" minH="500px">
               <Box mb={4} fontWeight="bold" fontSize="lg">
                 {column.title} ({column.issues.length})
@@ -51,13 +53,10 @@ const KanbanBoard: React.FC = () => {
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                     minH="400px"
-                    bg={snapshot.isDraggingOver ? "gray.200" : "gray.100"}
-                    p={2}
+                    bg={snapshot.isDraggingOver ? "gray.200" : "gray.50"}
                     borderRadius="md"
-                    transition="background 0.2s ease-in-out"
-                    border={
-                      snapshot.isDraggingOver ? "2px dashed gray" : "none"
-                    }
+                    p={2}
+                    transition="background-color 0.2s ease"
                   >
                     {column.issues.map((issue, index) => (
                       <Draggable
@@ -71,11 +70,13 @@ const KanbanBoard: React.FC = () => {
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
                             mb={4}
-                            bg={snapshot.isDragging ? "gray.300" : "white"}
-                            p={3}
-                            borderRadius="md"
-                            boxShadow={snapshot.isDragging ? "xl" : "md"}
-                            transition="background 0.2s ease-in-out, box-shadow 0.2s ease-in-out"
+                            opacity={snapshot.isDragging ? 0.8 : 1}
+                            transform={
+                              snapshot.isDragging ? "scale(1.02)" : "none"
+                            }
+                            transition="all 0.2s"
+                            cursor="grab"
+                            _active={{ cursor: "grabbing" }}
                           >
                             <IssueCard issue={issue} />
                           </Box>

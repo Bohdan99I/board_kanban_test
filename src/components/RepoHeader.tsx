@@ -1,8 +1,8 @@
-import React from 'react';
-import { Box, Flex, Link, Text, Avatar } from '@chakra-ui/react';
-import { useSelector } from 'react-redux';
-import { RootState } from '../store';
-import { ExternalLink } from 'lucide-react';
+import React from "react";
+import { Box, Flex, Link, Text, Avatar } from "@chakra-ui/react";
+import { useSelector } from "react-redux";
+import { RootState } from "../store";
+import { ExternalLink } from "lucide-react";
 
 const RepoHeader: React.FC = () => {
   const repoInfo = useSelector((state: RootState) => state.kanban.repoInfo);
@@ -19,7 +19,12 @@ const RepoHeader: React.FC = () => {
               {repoInfo.owner.login}
             </Link>
             <Text>/</Text>
-            <Link href={repoInfo.html_url} isExternal color="blue.500" fontWeight="bold">
+            <Link
+              href={repoInfo.html_url}
+              isExternal
+              color="blue.500"
+              fontWeight="bold"
+            >
               {repoInfo.name}
             </Link>
             <ExternalLink size={16} />
