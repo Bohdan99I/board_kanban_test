@@ -10,14 +10,23 @@ interface StoredRepoState {
 }
 
 const getStoredRepos = (): Record<string, StoredRepoState> => {
-  const stored = localStorage.getItem(REPOS_KEY);
-  return stored ? JSON.parse(stored) : {};
+  try {
+    const stored = localStorage.getItem(REPOS_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch (error) {
+    console.error("Error parsing stored repositories:", error);
+    return {};
+  }
 };
 
 const getInitialState = (): KanbanState => {
-  const savedState = localStorage.getItem(STORAGE_KEY);
-  if (savedState) {
-    return JSON.parse(savedState);
+  try {
+    const savedState = localStorage.getItem(STORAGE_KEY);
+    if (savedState) {
+      return JSON.parse(savedState);
+    }
+  } catch (error) {
+    console.error("Error parsing initial state:", error);
   }
   return {
     columns: {
@@ -32,15 +41,18 @@ const getInitialState = (): KanbanState => {
 };
 
 const saveState = (state: KanbanState) => {
-  if (state.repoInfo) {
+  if (!state.repoInfo) return;
+  try {
     const repos = getStoredRepos();
     repos[state.repoInfo.html_url] = {
       columns: state.columns,
       repoInfo: state.repoInfo,
     };
     localStorage.setItem(REPOS_KEY, JSON.stringify(repos));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (error) {
+    console.error("Error saving state:", error);
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 };
 
 const kanbanSlice = createSlice({
@@ -135,9 +147,7 @@ const kanbanSlice = createSlice({
       saveState(state);
     },
     clearIssues: (state) => {
-      state.columns.todo.issues = [];
-      state.columns.inProgress.issues = [];
-      state.columns.done.issues = [];
+      Object.values(state.columns).forEach(column => column.issues = []);
       saveState(state);
     },
   },

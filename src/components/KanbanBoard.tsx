@@ -1,57 +1,63 @@
-import React from 'react';
-import { Box, SimpleGrid } from '@chakra-ui/react';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../store';
-import { moveIssue } from '../store/kanbanSlice';
-import IssueCard from './IssueCard';
+import React from "react";
+import { Box, SimpleGrid } from "@chakra-ui/react";
+import {
+  DragDropContext,
+  Droppable,
+  Draggable,
+  DropResult,
+} from "react-beautiful-dnd";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState } from "../store";
+import { moveIssue } from "../store/kanbanSlice";
+import IssueCard from "./IssueCard";
 
 const KanbanBoard: React.FC = () => {
   const dispatch = useDispatch();
-  const { columns } = useSelector((state: RootState) => state.kanban);
+  const columns = useSelector((state: RootState) => state.kanban.columns);
 
-  const handleDragEnd = (result: DropResult) => {
-    if (!result.destination) return;
-
-    const { source, destination, draggableId } = result;
-    
+  const handleDragEnd = ({ source, destination, draggableId }: DropResult) => {
     if (
-      source.droppableId === destination.droppableId &&
-      source.index === destination.index
+      !destination ||
+      (source.droppableId === destination.droppableId &&
+        source.index === destination.index)
     ) {
       return;
     }
 
-    dispatch(moveIssue({
-      issueId: parseInt(draggableId),
-      sourceColumn: source.droppableId,
-      destinationColumn: destination.droppableId,
-      sourceIndex: source.index,
-      destinationIndex: destination.index,
-    }));
+    dispatch(
+      moveIssue({
+        issueId: Number(draggableId),
+        sourceColumn: source.droppableId,
+        destinationColumn: destination.droppableId,
+        sourceIndex: source.index,
+        destinationIndex: destination.index,
+      })
+    );
   };
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <SimpleGrid columns={3} spacing={6}>
+      <SimpleGrid minChildWidth="300px" spacing={6}>
         {Object.entries(columns).map(([columnId, column]) => (
-          <Box key={columnId}>
-            <Box
-              bg="gray.100"
-              p={4}
-              borderRadius="lg"
-              minH="500px"
-            >
+          <Box key={columnId} p={2}>
+            <Box bg="gray.100" p={4} borderRadius="lg" minH="500px">
               <Box mb={4} fontWeight="bold" fontSize="lg">
                 {column.title} ({column.issues.length})
               </Box>
-              
+
               <Droppable droppableId={columnId}>
-                {(provided) => (
+                {(provided, snapshot) => (
                   <Box
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                     minH="400px"
+                    bg={snapshot.isDraggingOver ? "gray.200" : "gray.100"}
+                    p={2}
+                    borderRadius="md"
+                    transition="background 0.2s ease-in-out"
+                    border={
+                      snapshot.isDraggingOver ? "2px dashed gray" : "none"
+                    }
                   >
                     {column.issues.map((issue, index) => (
                       <Draggable
@@ -59,12 +65,17 @@ const KanbanBoard: React.FC = () => {
                         draggableId={issue.id.toString()}
                         index={index}
                       >
-                        {(provided) => (
+                        {(provided, snapshot) => (
                           <Box
                             ref={provided.innerRef}
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
                             mb={4}
+                            bg={snapshot.isDragging ? "gray.300" : "white"}
+                            p={3}
+                            borderRadius="md"
+                            boxShadow={snapshot.isDragging ? "xl" : "md"}
+                            transition="background 0.2s ease-in-out, box-shadow 0.2s ease-in-out"
                           >
                             <IssueCard issue={issue} />
                           </Box>
